@@ -1,0 +1,30 @@
+# === ARECIE-ASMAR — Fichiers à ne jamais partager ===
+
+# Secrets Azure - CRITIQUE
+.env
+*.env.local
+
+# Environnement virtuel Python (lourd et reproductible)
+.venv/
+venv/
+
+# Cache Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Streamlit cache
+.streamlit/cache/
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+
+# Fichiers IDE
+.vscode/
+.idea/
+*.swp
+
+# Fichiers temporaires
+*.tmp
+*.log
