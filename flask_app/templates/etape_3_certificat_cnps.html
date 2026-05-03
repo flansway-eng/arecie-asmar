@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block progression %}
+<div class="progress">
+    <div class="progress-bar" style="width: 37.5%"></div>
+    <div class="progress-label">Etape 3 sur 8 - Certificat CNPS</div>
+</div>
+{% endblock %}
+
+{% block content %}
+<h2>Certificat de vie CNPS</h2>
+<p>Photographiez votre <strong>certificat de vie CNPS</strong> ou son
+<strong>recu de depot</strong> si le certificat n'est pas encore disponible.</p>
+
+{% for e in erreurs %}
+<div class="alert alert-error">{{ e }}</div>
+{% endfor %}
+
+{% if photo %}
+<div class="photo-saved">
+    <p class="success">{{ photo.nom }} ({{ photo.taille_mo }} Mo)</p>
+    <img src="{{ url_for('photo_preview', cle='certificat_CNPS') }}" 
+         class="photo-preview" alt="Apercu du certificat">
+    <form method="POST">
+        <input type="hidden" name="action" value="remplacer">
+        <button type="submit" class="btn">Remplacer cette photo</button>
+    </form>
+</div>
+{% else %}
+<form method="POST" enctype="multipart/form-data" class="form">
+    <label class="file-upload">
+        <input type="file" name="photo" accept="image/*,application/pdf" required>
+        <span class="file-upload-label">Choisir une photo / un PDF</span>
+    </label>
+    <button type="submit" class="btn btn-primary btn-block">Envoyer la photo</button>
+</form>
+{% endif %}
+
+<div class="nav-buttons">
+    <a href="{{ url_for('recu_boa') }}" class="btn">Precedent</a>
+    {% if photo %}
+    <form method="POST" style="flex: 1; margin: 0;">
+        <input type="hidden" name="action" value="suivant">
+        <button type="submit" class="btn btn-primary" style="width: 100%;">Suivant</button>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}

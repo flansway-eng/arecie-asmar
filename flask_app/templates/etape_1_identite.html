@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block progression %}
+<div class="progress">
+    <div class="progress-bar" style="width: 12.5%"></div>
+    <div class="progress-label">Etape 1 sur 8 - Identite</div>
+</div>
+{% endblock %}
+
+{% block content %}
+<h2>Vos informations</h2>
+<p>Commencons par quelques informations sur vous.</p>
+
+{% for e in erreurs %}
+<div class="alert alert-warning">{{ e }}</div>
+{% endfor %}
+
+<form method="POST" class="form">
+    <label>
+        Votre nom et prenom complet *
+        <input type="text" name="nom_adherent" value="{{ d.nom_adherent or '' }}"
+               placeholder="Ex: Zran Senan Flan" required>
+    </label>
+
+    <label>
+        Votre numero d'adherent ARECIE
+        <input type="text" name="numero_adherent" value="{{ d.numero_adherent or '' }}"
+               placeholder="Ex: G1532-00XXX (laissez vide si inconnu)">
+    </label>
+
+    <label>
+        Votre numero WhatsApp *
+        <input type="tel" name="telephone" value="{{ d.telephone or '' }}"
+               placeholder="Ex: +225 07 00 00 00 00" required>
+        <small>Pour vous contacter en cas de document manquant</small>
+    </label>
+
+    <fieldset>
+        <legend>Vous etes : *</legend>
+        <label class="radio">
+            <input type="radio" name="type_adherent" value="Renouvellement"
+                {% if d.type_adherent != 'Nouvel adherent' %}checked{% endif %}>
+            Renouvellement
+        </label>
+        <label class="radio">
+            <input type="radio" name="type_adherent" value="Nouvel adherent"
+                {% if d.type_adherent == 'Nouvel adherent' %}checked{% endif %}>
+            Nouvel adherent
+        </label>
+    </fieldset>
+
+    <p class="caption">* champs obligatoires</p>
+
+    <div class="nav-buttons">
+        <a href="{{ url_for('accueil') }}" class="btn">Retour</a>
+        <button type="submit" class="btn btn-primary">Suivant</button>
+    </div>
+</form>
+{% endblock %}

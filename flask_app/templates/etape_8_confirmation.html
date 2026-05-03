@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block progression %}
+<div class="progress">
+    <div class="progress-bar" style="width: 100%"></div>
+    <div class="progress-label">Etape 8 sur 8 - Confirmation</div>
+</div>
+{% endblock %}
+
+{% block content %}
+{% if success %}
+<div class="alert alert-success">
+    <h2>Dossier transmis avec succes !</h2>
+    <p><strong>Reference :</strong> Dossier #{{ ref_id }}</p>
+</div>
+
+<p>Le secretariat de l'ARECIE va verifier vos documents.</p>
+<p>En cas de document manquant ou illisible, vous serez recontacte sur votre numero WhatsApp.</p>
+<p><strong>Merci de votre confiance !</strong></p>
+
+{% else %}
+<div class="alert alert-error">
+    <h2>Une erreur s'est produite</h2>
+    <p>Detail technique :</p>
+    <pre>{{ error }}</pre>
+</div>
+
+<p>Veuillez reessayer dans quelques minutes ou contacter le secretariat.</p>
+<a href="{{ url_for('envoyer') }}" class="btn">Reessayer l'envoi</a>
+{% endif %}
+
+<a href="{{ url_for('nouveau_dossier') }}" class="btn btn-primary btn-block">Nouveau dossier</a>
+{% endblock %}

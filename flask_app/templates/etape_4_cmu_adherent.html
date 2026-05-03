@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block progression %}
+<div class="progress">
+    <div class="progress-bar" style="width: 50%"></div>
+    <div class="progress-label">Etape 4 sur 8 - CMU Adherent</div>
+</div>
+{% endblock %}
+
+{% block content %}
+<h2>Carte CMU - Adherent</h2>
+<p>Saisissez votre <strong>numero CMU</strong> et joignez le justificatif (carte CMU).</p>
+
+{% for e in erreurs %}
+<div class="alert alert-error">{{ e }}</div>
+{% endfor %}
+
+<form method="POST" enctype="multipart/form-data" class="form">
+    <label>
+        Votre numero de carte CMU *
+        <input type="text" name="cmu_adherent" value="{{ d.cmu_adherent or '' }}"
+               placeholder="Ex: CI-CMU-XXXXXXXX" required>
+    </label>
+
+    {% if photo %}
+    <div class="photo-saved">
+        <p class="success">{{ photo.nom }} ({{ photo.taille_mo }} Mo)</p>
+        <img src="{{ url_for('photo_preview', cle='cmu_adherent') }}" 
+             class="photo-preview" alt="Apercu de la carte CMU">
+        <button type="submit" name="action" value="remplacer" class="btn">Remplacer la photo</button>
+    </div>
+    {% else %}
+    <label class="file-upload">
+        <input type="file" name="photo" accept="image/*,application/pdf" required>
+        <span class="file-upload-label">Photo de la carte CMU</span>
+    </label>
+    <button type="submit" class="btn btn-primary btn-block">Envoyer la photo</button>
+    {% endif %}
+
+    <p class="caption">* champs obligatoires</p>
+
+    <div class="nav-buttons">
+        <a href="{{ url_for('certificat_cnps') }}" class="btn">Precedent</a>
+        {% if photo %}
+        <button type="submit" name="action" value="suivant" class="btn btn-primary">Suivant</button>
+        {% endif %}
+    </div>
+</form>
+{% endblock %}

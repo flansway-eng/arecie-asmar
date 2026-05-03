@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block progression %}
+<div class="progress">
+    <div class="progress-bar" style="width: 25%"></div>
+    <div class="progress-label">Etape 2 sur 8 - Recu BOA</div>
+</div>
+{% endblock %}
+
+{% block content %}
+<h2>Recu de versement BOA</h2>
+<p>Photographiez votre <strong>recu de versement BOA</strong> pour la cotisation ASMAR.</p>
+<div class="alert alert-warning">Le <strong>montant</strong> et la <strong>date</strong> doivent etre bien lisibles.</div>
+
+{% for e in erreurs %}
+<div class="alert alert-error">{{ e }}</div>
+{% endfor %}
+
+{% if photo %}
+<div class="photo-saved">
+    <p class="success">{{ photo.nom }} ({{ photo.taille_mo }} Mo)</p>
+    <img src="{{ url_for('photo_preview', cle='recu_BOA') }}" 
+         class="photo-preview" alt="Apercu du recu BOA">
+    <form method="POST">
+        <input type="hidden" name="action" value="remplacer">
+        <button type="submit" class="btn">Remplacer cette photo</button>
+    </form>
+</div>
+{% else %}
+<form method="POST" enctype="multipart/form-data" class="form">
+    <label class="file-upload">
+        <input type="file" name="photo" accept="image/*,application/pdf" required>
+        <span class="file-upload-label">Choisir une photo / un PDF</span>
+    </label>
+    <p class="info">Formats acceptes : JPG, PNG, PDF (max 10 Mo)</p>
+    <button type="submit" class="btn btn-primary btn-block">Envoyer la photo</button>
+</form>
+{% endif %}
+
+<div class="nav-buttons">
+    <a href="{{ url_for('identite') }}" class="btn">Precedent</a>
+    {% if photo %}
+    <form method="POST" style="flex: 1; margin: 0;">
+        <input type="hidden" name="action" value="suivant">
+        <button type="submit" class="btn btn-primary" style="width: 100%;">Suivant</button>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}

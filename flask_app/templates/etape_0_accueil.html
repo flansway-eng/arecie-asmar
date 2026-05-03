@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h2>Renouvellement couverture sante ASMAR 2026</h2>
+
+<p class="intro">Bonjour !</p>
+
+<p>Cette application va vous guider pour transmettre les documents necessaires
+au renouvellement de votre couverture sante ASMAR 2026.</p>
+
+<p>Cela prend environ <strong>5 minutes</strong>. Vous aurez besoin :</p>
+
+<ul>
+    <li>de votre <strong>recu de versement BOA</strong></li>
+    <li>de votre <strong>certificat de vie CNPS</strong> (ou son recu de depot)</li>
+    <li>de votre <strong>numero CMU</strong> et son justificatif</li>
+    <li>des informations sur votre <strong>conjoint et enfants</strong> s'il y a lieu</li>
+</ul>
+
+<p class="info">Vous pourrez prendre les photos avec votre telephone ou choisir des photos deja prises.</p>
+
+<a href="{{ url_for('identite') }}" class="btn btn-primary btn-block">Commencer</a>
+{% endblock %}

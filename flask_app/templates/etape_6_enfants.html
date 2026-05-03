@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block progression %}
+<div class="progress">
+    <div class="progress-bar" style="width: 75%"></div>
+    <div class="progress-label">Etape 6 sur 8 - Enfants</div>
+</div>
+{% endblock %}
+
+{% block content %}
+<h2>Enfants beneficiaires</h2>
+<p>Combien d'enfants souhaitez-vous declarer comme beneficiaires (max 2) ?</p>
+
+{% for e in erreurs %}
+<div class="alert alert-error">{{ e }}</div>
+{% endfor %}
+
+<form method="POST" enctype="multipart/form-data" class="form">
+    <fieldset>
+        <legend>Nombre d'enfants beneficiaires :</legend>
+        {% for n in [0, 1, 2] %}
+        <label class="radio">
+            <input type="radio" name="nb_enfants" value="{{ n }}"
+                {% if d.nb_enfants == n %}checked{% endif %}
+                onchange="this.form.submit()">
+            {{ n }}
+        </label>
+        {% endfor %}
+    </fieldset>
+
+    {% if d.nb_enfants and d.nb_enfants >= 1 %}
+    <h3>Enfant 1</h3>
+    <label>
+        Nom et prenom *
+        <input type="text" name="nom_enfant_1" value="{{ d.nom_enfant_1 or '' }}">
+    </label>
+    <label>
+        Numero CMU *
+        <input type="text" name="cmu_enfant_1" value="{{ d.cmu_enfant_1 or '' }}">
+    </label>
+    {% set photo_e1 = photos_meta.get('cmu_enfant_1') %}
+    {% if photo_e1 %}
+    <div class="photo-saved">
+        <p class="success">{{ photo_e1.nom }}</p>
+        <img src="{{ url_for('photo_preview', cle='cmu_enfant_1') }}" 
+             class="photo-preview" alt="Apercu CMU enfant 1">
+        <button type="submit" name="action" value="remplacer_cmu_enfant_1" class="btn">Remplacer</button>
+    </div>
+    {% else %}
+    <label class="file-upload">
+        <input type="file" name="photo_1" accept="image/*,application/pdf">
+        <span class="file-upload-label">Photo carte CMU - Enfant 1</span>
+    </label>
+    {% endif %}
+    {% endif %}
+
+    {% if d.nb_enfants and d.nb_enfants >= 2 %}
+    <h3>Enfant 2</h3>
+    <label>
+        Nom et prenom *
+        <input type="text" name="nom_enfant_2" value="{{ d.nom_enfant_2 or '' }}">
+    </label>
+    <label>
+        Numero CMU *
+        <input type="text" name="cmu_enfant_2" value="{{ d.cmu_enfant_2 or '' }}">
+    </label>
+    {% set photo_e2 = photos_meta.get('cmu_enfant_2') %}
+    {% if photo_e2 %}
+    <div class="photo-saved">
+        <p class="success">{{ photo_e2.nom }}</p>
+        <img src="{{ url_for('photo_preview', cle='cmu_enfant_2') }}" 
+             class="photo-preview" alt="Apercu CMU enfant 2">
+        <button type="submit" name="action" value="remplacer_cmu_enfant_2" class="btn">Remplacer</button>
+    </div>
+    {% else %}
+    <label class="file-upload">
+        <input type="file" name="photo_2" accept="image/*,application/pdf">
+        <span class="file-upload-label">Photo carte CMU - Enfant 2</span>
+    </label>
+    {% endif %}
+    {% endif %}
+
+    <div class="nav-buttons">
+        <a href="{{ url_for('conjoint') }}" class="btn">Precedent</a>
+        <button type="submit" name="action" value="suivant" class="btn btn-primary">Suivant</button>
+    </div>
+</form>
+{% endblock %}

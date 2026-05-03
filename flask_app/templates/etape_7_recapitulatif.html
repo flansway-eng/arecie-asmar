@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block progression %}
+<div class="progress">
+    <div class="progress-bar" style="width: 87.5%"></div>
+    <div class="progress-label">Etape 7 sur 8 - Recapitulatif</div>
+</div>
+{% endblock %}
+
+{% block content %}
+<h2>Recapitulatif de votre dossier</h2>
+<p>Verifiez toutes les informations avant l'envoi.</p>
+
+<div class="recap">
+    <h3>Vos informations</h3>
+    <p><strong>Nom :</strong> {{ d.nom_adherent }}</p>
+    <p><strong>N. adherent :</strong> {{ d.numero_adherent or '(non renseigne)' }}</p>
+    <p><strong>Telephone :</strong> {{ d.telephone }}</p>
+    <p><strong>Type :</strong> {{ d.type_adherent }}</p>
+    <p><strong>N. CMU :</strong> {{ d.cmu_adherent }}</p>
+
+    <h3>Documents transmis</h3>
+    <ul>
+        {% if 'recu_BOA' in photos_meta %}<li class="ok">Recu BOA</li>{% else %}<li class="ko">Recu BOA MANQUANT</li>{% endif %}
+        {% if 'certificat_CNPS' in photos_meta %}<li class="ok">Certificat CNPS</li>{% else %}<li class="ko">Certificat CNPS MANQUANT</li>{% endif %}
+        {% if 'cmu_adherent' in photos_meta %}<li class="ok">Carte CMU adherent</li>{% else %}<li class="ko">Carte CMU adherent MANQUANTE</li>{% endif %}
+    </ul>
+
+    {% if d.a_un_conjoint %}
+    <h3>Conjoint</h3>
+    <p><strong>Nom :</strong> {{ d.nom_conjoint }}</p>
+    <p><strong>N. CMU :</strong> {{ d.cmu_conjoint }}</p>
+    {% if 'cmu_conjoint' in photos_meta %}<p class="success">Carte CMU conjoint</p>{% endif %}
+    {% endif %}
+
+    {% if d.nb_enfants and d.nb_enfants > 0 %}
+    <h3>Enfants ({{ d.nb_enfants }})</h3>
+    {% for i in range(1, d.nb_enfants + 1) %}
+    <p><strong>Enfant {{ i }} :</strong> {{ d['nom_enfant_' ~ i] }} - CMU {{ d['cmu_enfant_' ~ i] }}</p>
+    {% endfor %}
+    {% endif %}
+</div>
+
+<div class="alert alert-warning">
+    Une fois envoye, vous ne pourrez plus modifier ce dossier.
+    Si une information est incorrecte, retournez en arriere.
+</div>
+
+<form method="POST" id="form-envoi" onsubmit="document.getElementById('overlay-spinner').style.display='flex';">
+    <div class="nav-buttons">
+        <a href="{{ url_for('enfants') }}" class="btn">Precedent</a>
+        <button type="submit" class="btn btn-primary">Envoyer mon dossier</button>
+    </div>
+</form>
+
+<div id="overlay-spinner" class="spinner-overlay" style="display:none;">
+    <div class="spinner"></div>
+    <p class="spinner-text">Transmission de votre dossier en cours...<br>Merci de patienter</p>
+</div>
+{% endblock %}

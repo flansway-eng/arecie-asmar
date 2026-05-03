@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0F6E56">
+    <title>{% block title %}ARECIE - Renouvellement ASMAR 2026{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header class="app-header">
+            <a href="{{ url_for('accueil') }}" class="logo-link">
+                <img src="{{ url_for('static', filename='img/logo_arecie.png') }}" 
+                     alt="ARECIE" class="logo">
+            </a>
+        </header>
+
+        {% block progression %}{% endblock %}
+
+        <main class="content">
+            {% block content %}{% endblock %}
+        </main>
+
+        <footer class="footer">
+            <small>ARECIE &copy; 2026 &middot; Renouvellement ASMAR</small>
+        </footer>
+    </div>
+</body>
+</html>

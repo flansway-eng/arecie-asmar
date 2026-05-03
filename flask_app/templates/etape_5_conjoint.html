@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block progression %}
+<div class="progress">
+    <div class="progress-bar" style="width: 62.5%"></div>
+    <div class="progress-label">Etape 5 sur 8 - Conjoint</div>
+</div>
+{% endblock %}
+
+{% block content %}
+<h2>Conjoint beneficiaire</h2>
+
+{% for e in erreurs %}
+<div class="alert alert-error">{{ e }}</div>
+{% endfor %}
+
+<form method="POST" enctype="multipart/form-data" class="form" id="form-conjoint">
+    <fieldset>
+        <legend>Avez-vous un conjoint beneficiaire ?</legend>
+        <label class="radio">
+            <input type="radio" name="a_un_conjoint" value="Non"
+                {% if not d.a_un_conjoint %}checked{% endif %}
+                onchange="document.getElementById('details-conjoint').style.display='none'">
+            Non
+        </label>
+        <label class="radio">
+            <input type="radio" name="a_un_conjoint" value="Oui"
+                {% if d.a_un_conjoint %}checked{% endif %}
+                onchange="document.getElementById('details-conjoint').style.display='block'">
+            Oui
+        </label>
+    </fieldset>
+
+    <div id="details-conjoint" style="display: {% if d.a_un_conjoint %}block{% else %}none{% endif %};">
+        <label>
+            Nom et prenom du conjoint *
+            <input type="text" name="nom_conjoint" value="{{ d.nom_conjoint or '' }}"
+                   placeholder="Ex: KOUASSI Marie">
+        </label>
+        <label>
+            Numero CMU du conjoint *
+            <input type="text" name="cmu_conjoint" value="{{ d.cmu_conjoint or '' }}"
+                   placeholder="Ex: CI-CMU-XXXXXXXX">
+        </label>
+
+        {% if photo %}
+        <div class="photo-saved">
+            <p class="success">{{ photo.nom }} ({{ photo.taille_mo }} Mo)</p>
+            <img src="{{ url_for('photo_preview', cle='cmu_conjoint') }}" 
+                 class="photo-preview" alt="Apercu carte CMU conjoint">
+            <button type="submit" name="action" value="remplacer" class="btn">Remplacer la photo</button>
+        </div>
+        {% else %}
+        <label class="file-upload">
+            <input type="file" name="photo" accept="image/*,application/pdf">
+            <span class="file-upload-label">Photo de la carte CMU du conjoint</span>
+        </label>
+        <button type="submit" class="btn btn-primary btn-block">Envoyer la photo</button>
+        {% endif %}
+    </div>
+
+    <div class="nav-buttons">
+        <a href="{{ url_for('cmu_adherent') }}" class="btn">Precedent</a>
+        <button type="submit" name="action" value="suivant" class="btn btn-primary">Suivant</button>
+    </div>
+</form>
+{% endblock %}

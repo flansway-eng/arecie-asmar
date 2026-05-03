@@ -1,18 +1,7 @@
-# === ARECIE-ASMAR Collecte ===
-# Bibliothèques nécessaires au projet
-# Installer avec : pip install -r requirements.txt
-
-# Interface web conversationnelle
 streamlit==1.40.0
-
-# Authentification Microsoft Graph (Azure)
 msal==1.31.0
-
-# Envoi de requêtes HTTP vers Microsoft Graph
 requests==2.32.3
-
-# Lecture du fichier .env contenant les secrets
 python-dotenv==1.0.1
-
-# Manipulation d'images (compression photos avant upload)
 Pillow==11.0.0
+flask==3.0.3
+gunicorn==23.0.0
