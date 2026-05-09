@@ -19,13 +19,37 @@
 {% if photo %}
 <div class="photo-saved">
     <p class="success">{{ photo.nom }} ({{ photo.taille_mo }} Mo)</p>
-    <img src="{{ url_for('photo_preview', cle='recu_BOA') }}" 
+    <img src="{{ url_for('photo_preview', cle='recu_BOA') }}"
          class="photo-preview" alt="Apercu du recu BOA">
     <form method="POST">
         <input type="hidden" name="action" value="remplacer">
         <button type="submit" class="btn">Remplacer cette photo</button>
     </form>
 </div>
+
+{% if validation and validation.disponible %}
+<div class="validation-ia">
+    <p class="validation-titre">Verification automatique du document</p>
+    <div class="validation-ligne {% if validation.nature_ok %}ok{% else %}warning{% endif %}">
+        {% if validation.nature_ok %}✓{% else %}⚠{% endif %}
+        <strong>Nature :</strong> {{ validation.nature_msg }}
+    </div>
+    <div class="validation-ligne {% if validation.date_ok %}ok{% else %}warning{% endif %}">
+        {% if validation.date_ok %}✓{% else %}⚠{% endif %}
+        <strong>Date 2025 :</strong> {{ validation.date_msg }}
+    </div>
+    <div class="validation-ligne {% if validation.lisibilite_ok %}ok{% else %}warning{% endif %}">
+        {% if validation.lisibilite_ok %}✓{% else %}⚠{% endif %}
+        <strong>Lisibilite :</strong> {{ validation.lisibilite_msg }}
+    </div>
+    {% if not validation.nature_ok or not validation.date_ok or not validation.lisibilite_ok %}
+    <p class="validation-note">
+        Vous pouvez corriger le document ou continuer malgre cet avertissement.
+    </p>
+    {% endif %}
+</div>
+{% endif %}
+
 {% else %}
 <form method="POST" enctype="multipart/form-data" class="form">
     <label class="file-upload">

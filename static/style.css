@@ -512,3 +512,51 @@ fieldset legend {
         max-width: 280px;
     }
 }
+/* === Validation IA des documents === */
+.validation-ia {
+    background: #f8fafb;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin: 12px 0 16px;
+}
+
+.validation-titre {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: var(--color-text-light);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+}
+
+.validation-ligne {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--color-border);
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.validation-ligne:last-of-type {
+    border-bottom: none;
+}
+
+.validation-ligne.ok {
+    color: #166534;
+}
+
+.validation-ligne.warning {
+    color: #92400e;
+}
+
+.validation-note {
+    font-size: 0.8125rem;
+    color: var(--color-text-light);
+    font-style: italic;
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--color-border);
+}
