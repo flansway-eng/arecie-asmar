@@ -53,7 +53,7 @@ ou votre <strong>nom de famille</strong> pour verifier si votre carte est bloque
                 {% if carte.societe %}<p><strong>Societe :</strong> {{ carte.societe }}</p>{% endif %}
                 <p><strong>Motif du blocage :</strong>
                     <span class="motif">
-                        {{ carte.motif if carte.motif else 'Motif non renseigne - Retransmettez vos justificatifs, l'ARECIE assure le suivi' }}
+                        {{ carte.motif if carte.motif else "Dossier en cours - Retransmettez vos justificatifs, ARECIE assure le suivi" }}
                     </span>
                 </p>
             </div>
