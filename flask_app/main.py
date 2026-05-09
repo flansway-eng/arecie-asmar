@@ -126,7 +126,7 @@ def valider_document_ia(image_bytes: bytes, type_doc: str, mime_type: str) -> di
             },
             json={
                 "model": "claude-sonnet-4-6",
-                "max_tokens": 400,
+                "max_tokens": 1024,
                 "messages": [{
                     "role": "user",
                     "content": [
