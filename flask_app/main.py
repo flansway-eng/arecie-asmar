@@ -1,6 +1,6 @@
 """
 App Flask ARECIE - Collecte des dossiers ASMAR 2026
-Avec validation IA des documents (Claude Vision)
+Flux : verification carte bloquee → soumission justificatifs
 """
 
 import sys
@@ -56,7 +56,7 @@ app.config["MAX_CONTENT_LENGTH"] = 15 * 1024 * 1024
 
 PHOTOS_CACHE = {}
 
-# === Prompts de validation par type de document ===
+# === Prompts de validation ===
 PROMPTS_VALIDATION = {
     "recu_BOA": (
         "Tu es un assistant de validation documentaire pour l'ARECIE, association de retraites ivoiriens. "
@@ -102,7 +102,7 @@ PROMPTS_VALIDATION = {
 }
 
 
-def valider_document_ia(image_bytes: bytes, type_doc: str, mime_type: str) -> dict:
+def valider_document_ia(image_bytes, type_doc, mime_type):
     if not ANTHROPIC_API_KEY:
         return {"disponible": False}
     prompt = PROMPTS_VALIDATION.get(type_doc)
@@ -130,14 +130,11 @@ def valider_document_ia(image_bytes: bytes, type_doc: str, mime_type: str) -> di
                 "messages": [{
                     "role": "user",
                     "content": [
-                        {
-                            "type": "image",
-                            "source": {
-                                "type": "base64",
-                                "media_type": mime_type,
-                                "data": b64,
-                            },
-                        },
+                        {"type": "image", "source": {
+                            "type": "base64",
+                            "media_type": mime_type,
+                            "data": b64,
+                        }},
                         {"type": "text", "text": prompt},
                     ],
                 }],
@@ -156,6 +153,27 @@ def valider_document_ia(image_bytes: bytes, type_doc: str, mime_type: str) -> di
     except Exception as e:
         print(f"[WARN] Validation IA echouee pour {type_doc}: {e}")
         return {"disponible": False}
+
+
+def chercher_carte(query):
+    """Recherche une carte dans la liste des bloquees."""
+    q = query.strip().upper()
+    if not q or len(q) < 3:
+        return "erreur", []
+    resultats = []
+    for carte in CARTES_BLOQUEES:
+        if (
+            q in carte["username"].upper()
+            or q in carte["matricule_willis"].upper()
+            or q in carte["nom"].upper()
+            or q in carte["prenom"].upper()
+        ):
+            resultats.append(carte)
+    if not resultats:
+        return "non_bloquee", []
+    if len(resultats) > 3:
+        return "ambigu", resultats
+    return "bloquee", resultats
 
 
 def get_donnees():
@@ -217,15 +235,40 @@ def supprimer_photo(session_id, cle):
 
 # === Routes ===
 
-@app.route("/")
+@app.route("/", methods=["GET", "POST"])
 def accueil():
-    return render_template("etape_0_accueil.html")
+    """Page d'accueil : verification carte bloquee."""
+    resultat = None
+    query = ""
+
+    if request.method == "POST":
+        query = request.form.get("query", "").strip()
+        if len(query) < 3:
+            resultat = {"status": "erreur", "message": "Saisissez au moins 3 caracteres."}
+        else:
+            status, cartes = chercher_carte(query)
+            if status == "bloquee":
+                # Stocker la carte verifiee en session pour pre-remplir identite
+                carte = cartes[0]
+                session["carte_verifiee"] = carte
+                session.modified = True
+            resultat = {"status": status, "cartes": cartes, "count": len(cartes)}
+
+    return render_template("etape_0_accueil.html", resultat=resultat, query=query)
 
 
 @app.route("/identite", methods=["GET", "POST"])
 def identite():
     d = get_donnees()
     erreurs = []
+
+    # Pre-remplir avec les infos de la carte verifiee si disponibles
+    carte = session.get("carte_verifiee", {})
+    if carte and not d.get("nom_adherent"):
+        d["nom_adherent"] = f"{carte.get('prenom', '')} {carte.get('nom', '')}".strip().title()
+        d["numero_adherent"] = carte.get("matricule_willis", "")
+        session.modified = True
+
     if request.method == "POST":
         d["nom_adherent"] = request.form.get("nom_adherent", "").strip()
         d["numero_adherent"] = request.form.get("numero_adherent", "").strip()
@@ -238,6 +281,7 @@ def identite():
             erreurs.append("Le numero WhatsApp est obligatoire")
         if not erreurs:
             return redirect(url_for("recu_boa"))
+
     return render_template("etape_1_identite.html", d=d, erreurs=erreurs)
 
 
@@ -480,59 +524,6 @@ def photo_preview(cle):
     if not photo:
         abort(404)
     return Response(photo["contenu"], mimetype=photo["type_mime"])
-
-
-@app.route("/api/verifier-carte", methods=["POST"])
-def verifier_carte():
-    query = request.json.get("query", "").strip().upper()
-    if not query or len(query) < 3:
-        return jsonify({"status": "erreur",
-                        "message": "Saisissez au moins 3 caracteres."})
-    resultats = []
-    for carte in CARTES_BLOQUEES:
-        if (
-            query in carte["username"].upper()
-            or query in carte["matricule_willis"].upper()
-            or query in carte["nom"].upper()
-            or query in carte["prenom"].upper()
-        ):
-            resultats.append(carte)
-    if not resultats:
-        return jsonify({
-            "status": "non_bloquee",
-            "message": (
-                "Bonne nouvelle ! Aucune carte bloquee ne correspond "
-                "a votre recherche. En cas de doute, contactez le secretariat ARECIE."
-            )
-        })
-    if len(resultats) > 3:
-        return jsonify({
-            "status": "ambigu",
-            "message": (
-                f"{len(resultats)} resultats trouves. "
-                "Precisez votre recherche (matricule complet ou username)."
-            )
-        })
-    reponses = []
-    for c in resultats:
-        nom_complet = f"{c['prenom']} {c['nom']}".title()
-        motif = c["motif"] if c["motif"] else "Motif non renseigne - contactez le secretariat"
-        societe = f" | {c['societe']}" if c["societe"] else ""
-        reponses.append(
-            f"Carte bloquee : {nom_complet}{societe}\n"
-            f"Matricule : {c['matricule_willis']}\n"
-            f"Motif : {motif}"
-        )
-    return jsonify({
-        "status": "bloquee",
-        "message": (
-            "\n\n".join(reponses) +
-            "\n\nPour regulariser votre situation, transmettez vos justificatifs "
-            "via notre application en ligne :\n\n"
-            "arecie-asmar.onrender.com\n\n"
-            "Le secretariat traitera votre dossier dans les meilleurs delais."
-        )
-    })
 
 
 @app.route("/nouveau-dossier")

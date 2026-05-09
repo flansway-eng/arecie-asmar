@@ -1,24 +1,81 @@
 {% extends "base.html" %}
 
+{% block title %}ARECIE - Verification carte ASMAR 2026{% endblock %}
+
 {% block content %}
+<h1>ARECIE - ASMAR 2026</h1>
+<h2>Verifiez votre carte avant de soumettre</h2>
 
-<h2>Renouvellement couverture sante ASMAR 2026</h2>
+<p>Saisissez votre <strong>matricule Willis</strong>, votre <strong>username</strong>
+ou votre <strong>nom de famille</strong> pour verifier si votre carte est bloquee.</p>
 
-<p class="intro">Bonjour !</p>
+<form method="POST" class="form">
+    <label>
+        Matricule, username ou nom
+        <input type="text" name="query"
+               value="{{ query or '' }}"
+               placeholder="Ex: G1532-00929-C1 ou KOUASSI"
+               required autofocus>
+    </label>
+    <button type="submit" class="btn btn-primary btn-block">Verifier ma carte</button>
+</form>
 
-<p>Cette application va vous guider pour transmettre les documents necessaires
-au renouvellement de votre couverture sante ASMAR 2026.</p>
+{% if resultat %}
 
-<p>Cela prend environ <strong>5 minutes</strong>. Vous aurez besoin :</p>
+    {% if resultat.status == 'non_bloquee' %}
+    <div class="alert alert-success" style="margin-top: 24px;">
+        <strong>Bonne nouvelle !</strong><br>
+        Aucune carte bloquee ne correspond a votre recherche.<br>
+        Votre situation est a jour. Aucune action n'est requise.
+    </div>
 
-<ul>
-    <li>de votre <strong>recu de versement BOA</strong></li>
-    <li>de votre <strong>certificat de vie CNPS</strong> (ou son recu de depot)</li>
-    <li>de votre <strong>numero CMU</strong> et son justificatif</li>
-    <li>des informations sur votre <strong>conjoint et enfants</strong> s'il y a lieu</li>
-</ul>
+    {% elif resultat.status == 'ambigu' %}
+    <div class="alert alert-warning" style="margin-top: 24px;">
+        {{ resultat.count }} resultats trouves pour cette recherche.<br>
+        Precisez votre recherche avec votre matricule complet ou votre username.
+    </div>
 
-<p class="info">Vous pourrez prendre les photos avec votre telephone ou choisir des photos deja prises.</p>
+    {% elif resultat.status == 'erreur' %}
+    <div class="alert alert-warning" style="margin-top: 24px;">
+        {{ resultat.message }}
+    </div>
 
-<a href="{{ url_for('identite') }}" class="btn btn-primary btn-block">Commencer</a>
+    {% elif resultat.status == 'bloquee' %}
+    <div style="margin-top: 24px;">
+        {% for carte in resultat.cartes %}
+        <div class="carte-bloquee">
+            <div class="carte-bloquee-header">
+                Carte bloquee
+            </div>
+            <div class="carte-bloquee-body">
+                <p><strong>Titulaire :</strong> {{ (carte.prenom ~ ' ' ~ carte.nom) | title }}</p>
+                <p><strong>Matricule :</strong> {{ carte.matricule_willis }}</p>
+                {% if carte.societe %}<p><strong>Societe :</strong> {{ carte.societe }}</p>{% endif %}
+                <p><strong>Motif du blocage :</strong>
+                    <span class="motif">
+                        {{ carte.motif if carte.motif else 'Motif non renseigne - Retransmettez vos justificatifs, l'ARECIE assure le suivi' }}
+                    </span>
+                </p>
+            </div>
+        </div>
+        {% endfor %}
+
+        <div class="alert alert-warning">
+            Pour regulariser votre situation, vous devez soumettre vos justificatifs
+            via ce formulaire. Le secretariat ARECIE traitera votre dossier.
+        </div>
+
+        <a href="{{ url_for('identite') }}" class="btn btn-primary btn-block">
+            Soumettre mes justificatifs
+        </a>
+    </div>
+    {% endif %}
+
+{% else %}
+<div class="info" style="margin-top: 20px;">
+    Cette verification est obligatoire avant toute soumission de documents.
+    Seules les personnes dont la carte est bloquee peuvent soumettre un dossier.
+</div>
+{% endif %}
+
 {% endblock %}
