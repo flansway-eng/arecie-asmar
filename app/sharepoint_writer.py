@@ -62,6 +62,23 @@ def creer_dossier_adherent(nom, num_adherent=""):
     safe_nom = _slugify(nom)
     folder_name = f"{safe_nom}_{num_adherent}" if num_adherent else safe_nom
 
+    # -----------------------------------------------------------------
+    # CORRECTION : Vérifier si le dossier existe déjà avant de créer.
+    # Sans cette vérification, chaque retentative créait un doublon
+    # (SharePoint suffixait " 2", " 3"... via conflictBehavior "rename").
+    # On retourne le dossier existant si trouvé, on le crée sinon.
+    # -----------------------------------------------------------------
+    try:
+        existing = client.get(f"/drives/{drive_id}/root:/{folder_name}")
+        logger.info(f"Dossier existant réutilisé : {folder_name}")
+        return {
+            "id": existing["id"],
+            "name": existing["name"],
+            "webUrl": existing["webUrl"],
+        }
+    except Exception:
+        pass  # Dossier inexistant → on le crée ci-dessous
+
     body = {
         "name": folder_name,
         "folder": {},

@@ -191,8 +191,19 @@ def get_session_id():
 def stocker_photo(session_id, cle, fichier_storage):
     contenu_brut = fichier_storage.read()
     nom_original = fichier_storage.filename or "photo.jpg"
-    type_mime = fichier_storage.content_type or "image/jpeg"
-    if type_mime.startswith("image/"):
+    type_mime = fichier_storage.content_type or ""
+
+    # -----------------------------------------------------------------
+    # CORRECTION : Toujours détecter via PIL, indépendamment du
+    # content_type déclaré. Certains navigateurs mobiles (Android)
+    # envoient content_type="application/octet-stream" pour des photos,
+    # et un nom de fichier purement numérique sans extension (ex. "265906"),
+    # ce qui provoquait des extensions invalides du type ".265906".
+    # -----------------------------------------------------------------
+    try:
+        with Image.open(BytesIO(contenu_brut)) as probe:
+            probe.verify()  # lève une exception si non-image ou corrompu
+        # verify() invalide le stream — rouvrir pour le traitement réel
         img = Image.open(BytesIO(contenu_brut))
         max_dim = 1600
         if max(img.size) > max_dim:
@@ -204,9 +215,25 @@ def stocker_photo(session_id, cle, fichier_storage):
         contenu_compresse = buf.getvalue()
         type_mime = "image/jpeg"
         ext = "jpg"
-    else:
+    except Exception:
+        # Pas une image reconnue par PIL : conserver le fichier brut
         contenu_compresse = contenu_brut
-        ext = nom_original.split(".")[-1].lower()
+        # Déduire l'extension de façon robuste :
+        # ignorer les "extensions" numériques ou de longueur anormale
+        parts = nom_original.rsplit(".", 1)
+        if (
+            len(parts) == 2
+            and parts[1].isalpha()
+            and 1 <= len(parts[1]) <= 5
+        ):
+            ext = parts[1].lower()
+        elif type_mime and "/" in type_mime:
+            ext = type_mime.split("/")[-1].split(";")[0].strip().lower()
+        else:
+            ext = "bin"
+        if not type_mime:
+            type_mime = "application/octet-stream"
+
     PHOTOS_CACHE.setdefault(session_id, {})[cle] = {
         "nom": f"{cle}.{ext}",
         "type_mime": type_mime,
