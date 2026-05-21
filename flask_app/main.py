@@ -1,6 +1,7 @@
 """
 App Flask ARECIE - Collecte des dossiers ASMAR 2026
-Flux : verification carte bloquee → soumission justificatifs
+Flux 1 : verification carte bloquee -> soumission justificatifs renouvellement
+Flux 2 : depot dossier de remboursement avec scan factures -> envoi DPS
 """
 
 import sys
@@ -21,7 +22,7 @@ load_dotenv()
 
 from flask import (
     Flask, render_template, request, redirect,
-    url_for, session, Response, abort, jsonify
+    url_for, session, Response, abort,
 )
 from PIL import Image
 from app.sharepoint_writer import soumettre_dossier_complet
@@ -54,9 +55,10 @@ app = Flask(
 app.secret_key = secrets.token_hex(32)
 app.config["MAX_CONTENT_LENGTH"] = 15 * 1024 * 1024
 
-PHOTOS_CACHE = {}
+# Cache photos en memoire (1 worker obligatoire)
+PHOTOS_CACHE: dict = {}
 
-# === Prompts de validation ===
+# === Prompts de validation IA ===
 PROMPTS_VALIDATION = {
     "recu_BOA": (
         "Tu es un assistant de validation documentaire pour l'ARECIE, association de retraites ivoiriens. "
@@ -102,6 +104,8 @@ PROMPTS_VALIDATION = {
 }
 
 
+# ── Validation IA (flux renouvellement) ──────────────────────────────────────
+
 def valider_document_ia(image_bytes, type_doc, mime_type):
     if not ANTHROPIC_API_KEY:
         return {"disponible": False}
@@ -120,20 +124,20 @@ def valider_document_ia(image_bytes, type_doc, mime_type):
         resp = _requests.post(
             "https://api.anthropic.com/v1/messages",
             headers={
-                "x-api-key": ANTHROPIC_API_KEY,
-                "anthropic-version": "2023-06-01",
-                "content-type": "application/json",
+                "x-api-key":          ANTHROPIC_API_KEY,
+                "anthropic-version":  "2023-06-01",
+                "content-type":       "application/json",
             },
             json={
-                "model": "claude-sonnet-4-6",
+                "model":      "claude-sonnet-4-6",
                 "max_tokens": 1024,
                 "messages": [{
                     "role": "user",
                     "content": [
                         {"type": "image", "source": {
-                            "type": "base64",
+                            "type":       "base64",
                             "media_type": mime_type,
-                            "data": b64,
+                            "data":       b64,
                         }},
                         {"type": "text", "text": prompt},
                     ],
@@ -155,8 +159,9 @@ def valider_document_ia(image_bytes, type_doc, mime_type):
         return {"disponible": False}
 
 
+# ── Helpers communs ───────────────────────────────────────────────────────────
+
 def chercher_carte(query):
-    """Recherche une carte dans la liste des bloquees."""
     q = query.strip().upper()
     if not q or len(q) < 3:
         return "erreur", []
@@ -188,22 +193,19 @@ def get_session_id():
     return session["sid"]
 
 
-def stocker_photo(session_id, cle, fichier_storage):
+def _stocker_fichier(cache_key: str, meta_key: str, cle: str, fichier_storage):
+    """
+    Stocke un fichier (photo ou document) dans PHOTOS_CACHE.
+    Detecte les images via PIL independamment du content_type declare
+    (correction bug extensions numeriques sur Android).
+    """
     contenu_brut = fichier_storage.read()
-    nom_original = fichier_storage.filename or "photo.jpg"
-    type_mime = fichier_storage.content_type or ""
+    nom_original = fichier_storage.filename or "fichier.jpg"
+    type_mime    = fichier_storage.content_type or ""
 
-    # -----------------------------------------------------------------
-    # CORRECTION : Toujours détecter via PIL, indépendamment du
-    # content_type déclaré. Certains navigateurs mobiles (Android)
-    # envoient content_type="application/octet-stream" pour des photos,
-    # et un nom de fichier purement numérique sans extension (ex. "265906"),
-    # ce qui provoquait des extensions invalides du type ".265906".
-    # -----------------------------------------------------------------
     try:
         with Image.open(BytesIO(contenu_brut)) as probe:
-            probe.verify()  # lève une exception si non-image ou corrompu
-        # verify() invalide le stream — rouvrir pour le traitement réel
+            probe.verify()
         img = Image.open(BytesIO(contenu_brut))
         max_dim = 1600
         if max(img.size) > max_dim:
@@ -212,20 +214,13 @@ def stocker_photo(session_id, cle, fichier_storage):
             img = img.convert("RGB")
         buf = BytesIO()
         img.save(buf, format="JPEG", quality=85, optimize=True)
-        contenu_compresse = buf.getvalue()
+        contenu_final = buf.getvalue()
         type_mime = "image/jpeg"
         ext = "jpg"
     except Exception:
-        # Pas une image reconnue par PIL : conserver le fichier brut
-        contenu_compresse = contenu_brut
-        # Déduire l'extension de façon robuste :
-        # ignorer les "extensions" numériques ou de longueur anormale
+        contenu_final = contenu_brut
         parts = nom_original.rsplit(".", 1)
-        if (
-            len(parts) == 2
-            and parts[1].isalpha()
-            and 1 <= len(parts[1]) <= 5
-        ):
+        if len(parts) == 2 and parts[1].isalpha() and 1 <= len(parts[1]) <= 5:
             ext = parts[1].lower()
         elif type_mime and "/" in type_mime:
             ext = type_mime.split("/")[-1].split(";")[0].strip().lower()
@@ -234,40 +229,63 @@ def stocker_photo(session_id, cle, fichier_storage):
         if not type_mime:
             type_mime = "application/octet-stream"
 
-    PHOTOS_CACHE.setdefault(session_id, {})[cle] = {
-        "nom": f"{cle}.{ext}",
+    PHOTOS_CACHE.setdefault(cache_key, {})[cle] = {
+        "nom":      f"{cle}.{ext}",
         "type_mime": type_mime,
-        "contenu": contenu_compresse,
-        "taille_mo": round(len(contenu_compresse) / (1024 * 1024), 2),
+        "contenu":  contenu_final,
+        "taille_mo": round(len(contenu_final) / (1024 * 1024), 2),
     }
-    session["photos_meta"] = session.get("photos_meta", {})
-    session["photos_meta"][cle] = {
-        "nom": f"{cle}.{ext}",
-        "taille_mo": PHOTOS_CACHE[session_id][cle]["taille_mo"],
+    session[meta_key] = session.get(meta_key, {})
+    session[meta_key][cle] = {
+        "nom":      f"{cle}.{ext}",
+        "taille_mo": PHOTOS_CACHE[cache_key][cle]["taille_mo"],
     }
     session.modified = True
-    return contenu_compresse, type_mime
+    return contenu_final, type_mime
+
+
+def stocker_photo(session_id, cle, fichier_storage):
+    """Flux renouvellement ASMAR."""
+    return _stocker_fichier(session_id, "photos_meta", cle, fichier_storage)
+
+
+def stocker_doc_remb(session_id, cle, fichier_storage):
+    """Flux remboursement."""
+    return _stocker_fichier(f"remb_{session_id}", "remb_photos_meta", cle, fichier_storage)
 
 
 def supprimer_photo(session_id, cle):
     if session_id in PHOTOS_CACHE and cle in PHOTOS_CACHE[session_id]:
         del PHOTOS_CACHE[session_id][cle]
-    if "photos_meta" in session and cle in session["photos_meta"]:
-        del session["photos_meta"][cle]
-        session.modified = True
-    if "validations" in session and cle in session["validations"]:
-        del session["validations"][cle]
+    for meta_key in ("photos_meta", "validations"):
+        if meta_key in session and cle in session[meta_key]:
+            del session[meta_key][cle]
+            session.modified = True
+
+
+def supprimer_doc_remb(session_id, cle):
+    remb_key = f"remb_{session_id}"
+    if remb_key in PHOTOS_CACHE and cle in PHOTOS_CACHE[remb_key]:
+        del PHOTOS_CACHE[remb_key][cle]
+    if "remb_photos_meta" in session and cle in session["remb_photos_meta"]:
+        del session["remb_photos_meta"][cle]
         session.modified = True
 
 
-# === Routes ===
+def get_remb_donnees():
+    if "remb_donnees" not in session:
+        session["remb_donnees"] = {}
+    return session["remb_donnees"]
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# FLUX 1 — Renouvellement ASMAR (routes existantes)
+# ═══════════════════════════════════════════════════════════════════════════════
 
 @app.route("/", methods=["GET", "POST"])
 def accueil():
-    """Page d'accueil : verification carte bloquee."""
     resultat = None
     query = ""
-
     if request.method == "POST":
         query = request.form.get("query", "").strip()
         if len(query) < 3:
@@ -275,12 +293,9 @@ def accueil():
         else:
             status, cartes = chercher_carte(query)
             if status == "bloquee":
-                # Stocker la carte verifiee en session pour pre-remplir identite
-                carte = cartes[0]
-                session["carte_verifiee"] = carte
+                session["carte_verifiee"] = cartes[0]
                 session.modified = True
             resultat = {"status": status, "cartes": cartes, "count": len(cartes)}
-
     return render_template("etape_0_accueil.html", resultat=resultat, query=query)
 
 
@@ -288,19 +303,16 @@ def accueil():
 def identite():
     d = get_donnees()
     erreurs = []
-
-    # Pre-remplir avec les infos de la carte verifiee si disponibles
     carte = session.get("carte_verifiee", {})
     if carte and not d.get("nom_adherent"):
-        d["nom_adherent"] = f"{carte.get('prenom', '')} {carte.get('nom', '')}".strip().title()
+        d["nom_adherent"]   = f"{carte.get('prenom', '')} {carte.get('nom', '')}".strip().title()
         d["numero_adherent"] = carte.get("matricule_willis", "")
         session.modified = True
-
     if request.method == "POST":
-        d["nom_adherent"] = request.form.get("nom_adherent", "").strip()
+        d["nom_adherent"]   = request.form.get("nom_adherent", "").strip()
         d["numero_adherent"] = request.form.get("numero_adherent", "").strip()
-        d["telephone"] = request.form.get("telephone", "").strip()
-        d["type_adherent"] = request.form.get("type_adherent", "Renouvellement")
+        d["telephone"]      = request.form.get("telephone", "").strip()
+        d["type_adherent"]  = request.form.get("type_adherent", "Renouvellement")
         session.modified = True
         if not d["nom_adherent"]:
             erreurs.append("Le nom est obligatoire")
@@ -308,7 +320,6 @@ def identite():
             erreurs.append("Le numero WhatsApp est obligatoire")
         if not erreurs:
             return redirect(url_for("recu_boa"))
-
     return render_template("etape_1_identite.html", d=d, erreurs=erreurs)
 
 
@@ -334,7 +345,7 @@ def recu_boa():
             session.modified = True
             return redirect(url_for("recu_boa"))
     photo_meta = session.get("photos_meta", {}).get("recu_BOA")
-    validation = session.get("validations", {}).get("recu_BOA")
+    validation  = session.get("validations", {}).get("recu_BOA")
     return render_template("etape_2_recu_boa.html",
                            photo=photo_meta, erreurs=erreurs, validation=validation)
 
@@ -361,7 +372,7 @@ def certificat_cnps():
             session.modified = True
             return redirect(url_for("certificat_cnps"))
     photo_meta = session.get("photos_meta", {}).get("certificat_CNPS")
-    validation = session.get("validations", {}).get("certificat_CNPS")
+    validation  = session.get("validations", {}).get("certificat_CNPS")
     return render_template("etape_3_certificat_cnps.html",
                            photo=photo_meta, erreurs=erreurs, validation=validation)
 
@@ -395,7 +406,7 @@ def cmu_adherent():
             if not erreurs:
                 return redirect(url_for("conjoint"))
     photo_meta = session.get("photos_meta", {}).get("cmu_adherent")
-    validation = session.get("validations", {}).get("cmu_adherent")
+    validation  = session.get("validations", {}).get("cmu_adherent")
     return render_template("etape_4_cmu_adherent.html",
                            d=d, photo=photo_meta, erreurs=erreurs, validation=validation)
 
@@ -525,10 +536,7 @@ def envoyer():
             k: v for k, v in d.items()
             if not k.startswith("nom_enfant_") and not k.startswith("cmu_enfant_")
         }
-        result = soumettre_dossier_complet(
-            donnees=donnees_propres,
-            photos=photos_a_envoyer,
-        )
+        result = soumettre_dossier_complet(donnees=donnees_propres, photos=photos_a_envoyer)
         if sid in PHOTOS_CACHE:
             del PHOTOS_CACHE[sid]
         return render_template(
@@ -561,6 +569,151 @@ def nouveau_dossier():
     session.clear()
     return redirect(url_for("accueil"))
 
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# FLUX 2 — Remboursement ASMAR (nouvelles routes)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@app.route("/remboursement")
+def remboursement_accueil():
+    return render_template("remb_0_accueil.html")
+
+
+@app.route("/remboursement/identite", methods=["GET", "POST"])
+def remboursement_identite():
+    d = get_remb_donnees()
+    erreurs = []
+    if request.method == "POST":
+        d["nom_adherent"]    = request.form.get("nom_adherent", "").strip()
+        d["numero_adherent"] = request.form.get("numero_adherent", "").strip()
+        d["telephone"]       = request.form.get("telephone", "").strip()
+        session.modified = True
+        if not d["nom_adherent"]:
+            erreurs.append("Le nom est obligatoire")
+        if not d["telephone"]:
+            erreurs.append("Le numero WhatsApp est obligatoire")
+        if not erreurs:
+            return redirect(url_for("remboursement_documents"))
+    return render_template("remb_1_identite.html", d=d, erreurs=erreurs)
+
+
+@app.route("/remboursement/documents", methods=["GET", "POST"])
+def remboursement_documents():
+    sid = get_session_id()
+    erreurs = []
+    if request.method == "POST":
+        action = request.form.get("action", "")
+        if action.startswith("remplacer_"):
+            supprimer_doc_remb(sid, action.replace("remplacer_", ""))
+            return redirect(url_for("remboursement_documents"))
+        for cle, champ in [("ordonnance", "ordonnance"), ("bulletin_examen", "bulletin_examen")]:
+            fichier = request.files.get(champ)
+            if fichier and fichier.filename:
+                stocker_doc_remb(sid, cle, fichier)
+                return redirect(url_for("remboursement_documents"))
+        if action == "suivant":
+            if "ordonnance" not in session.get("remb_photos_meta", {}):
+                erreurs.append("L'ordonnance medicale est obligatoire")
+            if not erreurs:
+                return redirect(url_for("remboursement_factures"))
+    photos_meta = session.get("remb_photos_meta", {})
+    return render_template("remb_2_documents.html", photos_meta=photos_meta, erreurs=erreurs)
+
+
+@app.route("/remboursement/factures", methods=["GET", "POST"])
+def remboursement_factures():
+    sid = get_session_id()
+    erreurs = []
+    if request.method == "POST":
+        action = request.form.get("action", "")
+        if action.startswith("remplacer_"):
+            supprimer_doc_remb(sid, action.replace("remplacer_", ""))
+            return redirect(url_for("remboursement_factures"))
+        for i in range(1, 4):
+            fichier = request.files.get(f"facture_{i}")
+            if fichier and fichier.filename:
+                stocker_doc_remb(sid, f"facture_{i}", fichier)
+                return redirect(url_for("remboursement_factures"))
+        if action == "suivant":
+            if "facture_1" not in session.get("remb_photos_meta", {}):
+                erreurs.append("Au moins une facture est obligatoire")
+            if not erreurs:
+                return redirect(url_for("remboursement_recapitulatif"))
+    photos_meta = session.get("remb_photos_meta", {})
+    return render_template("remb_3_factures.html", photos_meta=photos_meta, erreurs=erreurs)
+
+
+@app.route("/remboursement/recapitulatif", methods=["GET", "POST"])
+def remboursement_recapitulatif():
+    if request.method == "POST":
+        return redirect(url_for("remboursement_envoyer"))
+    return render_template(
+        "remb_4_recapitulatif.html",
+        d=get_remb_donnees(),
+        photos_meta=session.get("remb_photos_meta", {}),
+    )
+
+
+@app.route("/remboursement/envoyer")
+def remboursement_envoyer():
+    from app.remb_writer import soumettre_remboursement
+    sid = get_session_id()
+    d = get_remb_donnees()
+    try:
+        remb_key = f"remb_{sid}"
+        cache_remb = PHOTOS_CACHE.get(remb_key, {})
+        documents = []
+        for cle in ["ordonnance", "bulletin_examen", "facture_1", "facture_2", "facture_3"]:
+            doc = cache_remb.get(cle)
+            if doc:
+                documents.append((doc["nom"], doc["type_mime"], doc["contenu"]))
+
+        result = soumettre_remboursement(donnees=d, documents=documents)
+
+        if remb_key in PHOTOS_CACHE:
+            del PHOTOS_CACHE[remb_key]
+        session.pop("remb_donnees",     None)
+        session.pop("remb_photos_meta", None)
+        session.modified = True
+
+        return render_template(
+            "remb_5_confirmation.html",
+            success=True,
+            dossier_name=result["dossier"]["name"],
+            dossier_url=result["dossier"]["webUrl"],
+            email_sent=result["email"].get("sent", False),
+            nb_docs=len(result["documents"]),
+        )
+    except Exception as e:
+        return render_template(
+            "remb_5_confirmation.html",
+            success=False,
+            error=str(e),
+        )
+
+
+@app.route("/remboursement/photo-preview/<cle>")
+def remb_photo_preview(cle):
+    sid = get_session_id()
+    doc = PHOTOS_CACHE.get(f"remb_{sid}", {}).get(cle)
+    if not doc:
+        abort(404)
+    return Response(doc["contenu"], mimetype=doc["type_mime"])
+
+
+@app.route("/remboursement/nouveau")
+def remboursement_nouveau():
+    sid = get_session_id()
+    remb_key = f"remb_{sid}"
+    if remb_key in PHOTOS_CACHE:
+        del PHOTOS_CACHE[remb_key]
+    session.pop("remb_donnees",     None)
+    session.pop("remb_photos_meta", None)
+    session.modified = True
+    return redirect(url_for("remboursement_accueil"))
+
+
+# ── Lancement local ───────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

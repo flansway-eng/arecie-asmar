@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Recapitulatif — Remboursement ARECIE{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="card" style="max-width:520px;margin:2rem auto">
+
+    <div class="card-header" style="background:var(--color-primary);padding:1.2rem 1.5rem;
+                                    border-radius:8px 8px 0 0">
+      <p style="color:#c8e6c9;margin:0 0 2px;font-size:.8rem">Etape 4 / 4 — Remboursement ASMAR</p>
+      <h2 style="color:white;margin:0;font-size:1.2rem">Recapitulatif avant envoi</h2>
+    </div>
+
+    <div style="padding:1.5rem">
+
+      <h3 style="color:var(--color-primary);font-size:.95rem;margin:0 0 .75rem">
+        Vos informations
+      </h3>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:1.5rem">
+        <tr style="background:#f9fafb">
+          <td style="padding:8px 12px;color:#6b7280;font-size:.85rem;width:45%">Nom adherent</td>
+          <td style="padding:8px 12px;font-weight:600;font-size:.9rem">{{ d.nom_adherent or '—' }}</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;color:#6b7280;font-size:.85rem">N&deg; adherent</td>
+          <td style="padding:8px 12px;font-size:.9rem">{{ d.numero_adherent or '—' }}</td>
+        </tr>
+        <tr style="background:#f9fafb">
+          <td style="padding:8px 12px;color:#6b7280;font-size:.85rem">Telephone</td>
+          <td style="padding:8px 12px;font-size:.9rem">{{ d.telephone or '—' }}</td>
+        </tr>
+      </table>
+
+      <h3 style="color:var(--color-primary);font-size:.95rem;margin:0 0 .75rem">
+        Documents attaches
+      </h3>
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:var(--radius);
+                  padding:.75rem 1rem;margin-bottom:1.5rem">
+        {% set docs = [
+          ('ordonnance',     'Ordonnance medicale'),
+          ('bulletin_examen','Bulletin d\'examen'),
+          ('facture_1',      'Facture 1'),
+          ('facture_2',      'Facture 2'),
+          ('facture_3',      'Facture 3'),
+        ] %}
+        {% set found = namespace(count=0) %}
+        {% for cle, label in docs %}
+          {% if photos_meta[cle] %}
+          {% set found.count = found.count + 1 %}
+          <div style="display:flex;justify-content:space-between;align-items:center;
+                      padding:.4rem 0;border-bottom:1px solid #e5e7eb">
+            <span style="font-size:.85rem;color:#374151">&#10003; {{ label }}</span>
+            <span style="font-size:.75rem;color:#6b7280">
+              {{ photos_meta[cle].taille_mo }} Mo
+            </span>
+          </div>
+          {% endif %}
+        {% endfor %}
+        {% if found.count == 0 %}
+        <p style="margin:0;color:var(--color-error);font-size:.85rem">Aucun document</p>
+        {% endif %}
+      </div>
+
+      <div style="background:#f0faf5;border-left:4px solid var(--color-primary);
+                  padding:.85rem 1rem;border-radius:0 var(--radius) var(--radius) 0;
+                  margin-bottom:1.5rem">
+        <p style="margin:0;font-size:.85rem;color:#0a5544">
+          En cliquant sur <strong>Envoyer a la DPS</strong>, vos documents seront
+          deposes dans SharePoint et transmis automatiquement a WTW/DPS.
+        </p>
+      </div>
+
+      <form method="POST">
+        <div style="display:flex;gap:.75rem">
+          <a href="{{ url_for('remboursement_factures') }}"
+             style="flex:1;text-align:center;background:#f3f4f6;color:#444;
+                    padding:.85rem;border-radius:var(--radius);text-decoration:none;
+                    font-size:.95rem">
+            Retour
+          </a>
+          <button type="submit"
+                  style="flex:2;background:var(--color-success);color:white;
+                         border:none;padding:.85rem;border-radius:var(--radius);
+                         font-size:1rem;font-weight:600;cursor:pointer">
+            &#9993; Envoyer a la DPS
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

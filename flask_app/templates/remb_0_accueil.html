@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Remboursement ASMAR 2026 — ARECIE{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="card" style="max-width:600px;margin:2rem auto">
+
+    <div class="card-header" style="background:var(--color-primary);padding:1.5rem;border-radius:8px 8px 0 0">
+      <h1 style="color:white;margin:0;font-size:1.4rem">Remboursement ASMAR 2026</h1>
+      <p style="color:#c8e6c9;margin:4px 0 0;font-size:.9rem">Depot de dossier en ligne — WTW Med'Inova</p>
+    </div>
+
+    <div style="padding:1.5rem">
+
+      <div style="background:#f0faf5;border-left:4px solid var(--color-primary);
+                  padding:1rem;border-radius:0 8px 8px 0;margin-bottom:1.5rem">
+        <p style="margin:0;font-size:.95rem;color:#0a5544">
+          Deposez vos justificatifs de soins directement en ligne.
+          Vos documents seront transmis automatiquement a la DPS (WTW).
+        </p>
+      </div>
+
+      <h2 style="color:var(--color-primary);font-size:1.1rem">Documents a preparer</h2>
+      <ul style="line-height:2;padding-left:1.2rem;color:#444">
+        <li><strong>Ordonnance medicale</strong> — obligatoire</li>
+        <li>Bulletin d'examen — si applicable</li>
+        <li><strong>Facture(s)</strong> clinique, pharmacie ou hopital — au moins 1 obligatoire</li>
+      </ul>
+
+      <div style="background:#fff7ed;border-left:4px solid var(--color-accent);
+                  padding:1rem;border-radius:0 8px 8px 0;margin:1.5rem 0">
+        <p style="margin:0;font-size:.85rem;color:#92400e">
+          <strong>Delai :</strong> les dossiers doivent etre soumis dans un delai
+          de <strong>3 mois</strong> a compter de la date des soins.
+          Le remboursement intervient sous <strong>15 jours</strong> apres reception du dossier complet.
+        </p>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:.75rem;margin-top:2rem">
+        <a href="{{ url_for('remboursement_identite') }}"
+           style="display:block;text-align:center;background:var(--color-primary);
+                  color:white;padding:1rem;border-radius:var(--radius);
+                  text-decoration:none;font-weight:600;font-size:1.05rem">
+          Deposer mon dossier de remboursement
+        </a>
+        <a href="{{ url_for('accueil') }}"
+           style="display:block;text-align:center;background:#f3f4f6;
+                  color:#444;padding:.75rem;border-radius:var(--radius);
+                  text-decoration:none;font-size:.9rem">
+          Retour accueil ASMAR
+        </a>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

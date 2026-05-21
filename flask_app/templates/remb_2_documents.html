@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}Documents medicaux — Remboursement ARECIE{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="card" style="max-width:520px;margin:2rem auto">
+
+    <div class="card-header" style="background:var(--color-primary);padding:1.2rem 1.5rem;
+                                    border-radius:8px 8px 0 0">
+      <p style="color:#c8e6c9;margin:0 0 2px;font-size:.8rem">Etape 2 / 4 — Remboursement ASMAR</p>
+      <h2 style="color:white;margin:0;font-size:1.2rem">Documents medicaux</h2>
+    </div>
+
+    <div style="padding:1.5rem">
+
+      {% if erreurs %}
+      <div style="background:#fef2f2;border-left:4px solid var(--color-error);
+                  padding:.85rem 1rem;border-radius:0 var(--radius) var(--radius) 0;margin-bottom:1rem">
+        {% for e in erreurs %}
+        <p style="margin:0;color:var(--color-error);font-size:.9rem">{{ e }}</p>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {# ── Ordonnance ────────────────────────────────────────────────────── #}
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:var(--radius);
+                  padding:1rem;margin-bottom:1rem">
+        <h3 style="margin:0 0 .5rem;font-size:.95rem;color:var(--color-primary)">
+          Ordonnance medicale <span style="color:var(--color-error)">*</span>
+        </h3>
+
+        {% if photos_meta.ordonnance %}
+        <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem">
+          <img src="{{ url_for('remb_photo_preview', cle='ordonnance') }}"
+               style="width:80px;height:60px;object-fit:cover;border-radius:4px;
+                      border:2px solid var(--color-success)">
+          <div>
+            <p style="margin:0;font-size:.85rem;color:var(--color-success);font-weight:600">
+              &#10003; {{ photos_meta.ordonnance.nom }}
+            </p>
+            <p style="margin:2px 0 0;font-size:.75rem;color:#6b7280">
+              {{ photos_meta.ordonnance.taille_mo }} Mo
+            </p>
+          </div>
+        </div>
+        <form method="POST">
+          <button name="action" value="remplacer_ordonnance"
+                  style="background:#f3f4f6;border:1px solid #d1d5db;padding:.5rem .9rem;
+                         border-radius:var(--radius);font-size:.85rem;cursor:pointer">
+            Remplacer
+          </button>
+        </form>
+        {% else %}
+        <form method="POST" enctype="multipart/form-data">
+          <label style="display:block;background:var(--color-primary);color:white;
+                        padding:.75rem;border-radius:var(--radius);text-align:center;
+                        cursor:pointer;font-size:.95rem">
+            Prendre en photo / Choisir un fichier
+            <input type="file" name="ordonnance"
+                   accept="image/*,application/pdf" capture="environment"
+                   style="display:none" onchange="this.form.submit()">
+          </label>
+        </form>
+        {% endif %}
+      </div>
+
+      {# ── Bulletin d'examen ─────────────────────────────────────────────── #}
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:var(--radius);
+                  padding:1rem;margin-bottom:1.5rem">
+        <h3 style="margin:0 0 .5rem;font-size:.95rem;color:var(--color-primary)">
+          Bulletin d'examen
+          <span style="font-weight:400;color:#6b7280;font-size:.8rem">(optionnel)</span>
+        </h3>
+
+        {% if photos_meta.bulletin_examen %}
+        <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem">
+          <img src="{{ url_for('remb_photo_preview', cle='bulletin_examen') }}"
+               style="width:80px;height:60px;object-fit:cover;border-radius:4px;
+                      border:2px solid var(--color-success)">
+          <div>
+            <p style="margin:0;font-size:.85rem;color:var(--color-success);font-weight:600">
+              &#10003; {{ photos_meta.bulletin_examen.nom }}
+            </p>
+            <p style="margin:2px 0 0;font-size:.75rem;color:#6b7280">
+              {{ photos_meta.bulletin_examen.taille_mo }} Mo
+            </p>
+          </div>
+        </div>
+        <form method="POST">
+          <button name="action" value="remplacer_bulletin_examen"
+                  style="background:#f3f4f6;border:1px solid #d1d5db;padding:.5rem .9rem;
+                         border-radius:var(--radius);font-size:.85rem;cursor:pointer">
+            Remplacer
+          </button>
+        </form>
+        {% else %}
+        <form method="POST" enctype="multipart/form-data">
+          <label style="display:block;background:#f3f4f6;color:#444;border:1px solid #d1d5db;
+                        padding:.75rem;border-radius:var(--radius);text-align:center;
+                        cursor:pointer;font-size:.95rem">
+            Ajouter le bulletin d'examen (optionnel)
+            <input type="file" name="bulletin_examen"
+                   accept="image/*,application/pdf" capture="environment"
+                   style="display:none" onchange="this.form.submit()">
+          </label>
+        </form>
+        {% endif %}
+      </div>
+
+      {# ── Navigation ────────────────────────────────────────────────────── #}
+      <form method="POST">
+        <div style="display:flex;gap:.75rem">
+          <a href="{{ url_for('remboursement_identite') }}"
+             style="flex:1;text-align:center;background:#f3f4f6;color:#444;
+                    padding:.85rem;border-radius:var(--radius);text-decoration:none;
+                    font-size:.95rem">
+            Retour
+          </a>
+          <button name="action" value="suivant"
+                  style="flex:2;background:var(--color-primary);color:white;
+                         border:none;padding:.85rem;border-radius:var(--radius);
+                         font-size:1rem;font-weight:600;cursor:pointer">
+            Suivant &rarr;
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
