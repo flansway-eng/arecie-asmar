@@ -202,17 +202,19 @@ def envoyer_email_dps(donnees: dict, dossier_url: str, documents: list) -> dict:
   </div>
 </body></html>"""
 
+
     token = _get_mail_token()
-    payload: dict = {
-        "message": {
-            "subject":      subject,
-            "body":         {"contentType": "HTML", "content": body_html},
-            "toRecipients": [{"emailAddress": {"address": MAIL_DPS}}],
-            "ccRecipients": [{"emailAddress": {"address": MAIL_CC}}] if MAIL_CC else None,
-            "attachments":  attachments if attachments else None,
-        },
-        "saveToSentItems": True,
+    # Graph API rejette les cles a null — construire le message conditionnellement
+    message: dict = {
+        "subject":      subject,
+        "body":         {"contentType": "HTML", "content": body_html},
+        "toRecipients": [{"emailAddress": {"address": MAIL_DPS}}],
     }
+    if MAIL_CC:
+        message["ccRecipients"] = [{"emailAddress": {"address": MAIL_CC}}]
+    if attachments:
+        message["attachments"] = attachments
+    payload: dict = {"message": message, "saveToSentItems": True}
 
     resp = _requests.post(
         f"https://graph.microsoft.com/v1.0/users/{MAIL_SENDER}/sendMail",
